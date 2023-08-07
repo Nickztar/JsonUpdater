@@ -1,10 +1,11 @@
+use std::fmt::format;
 use std::fs::{self, File};
-use std::io::{prelude::*, BufReader, BufWriter, LineWriter};
-use std::path::PathBuf;
+use std::io::{prelude::*, BufReader};
 
 fn main() -> anyhow::Result<()> {
     println!("Hello, world!");
-    let models = fs::read_dir("models/")?;
+    let start_path = "models/";
+    let models = fs::read_dir(start_path)?;
     for file in models.into_iter().filter(|c| {
         c.as_ref().is_ok_and(|n| {
             n.file_name()
@@ -16,11 +17,12 @@ fn main() -> anyhow::Result<()> {
         let file_name = file.file_name();
         let model = File::open(file.path())?;
         let reader = BufReader::new(model);
-        let mut new_file = File::create("models/new_".to_owned() + file_name.to_str().unwrap())?;
+        let mut new_file =
+            File::create(format!("{}{}", start_path, "new_") + file_name.to_str().unwrap())?;
         let mut prev_line = None;
         for line in reader.lines() {
             let line = line?;
-            if !line.contains("get;") {
+            if !line.contains("get;") && !line.starts_with("//") && !line.contains("JsonProperty") {
                 new_file.write(line.as_bytes())?;
                 new_file.write(&[b'\n'])?;
                 prev_line = Some(line);
@@ -54,7 +56,7 @@ fn main() -> anyhow::Result<()> {
                     }
                     new_file.write(
                         format!(
-                            "{:indent$}JsonProperty[(\"{}\")]",
+                            "{:indent$}[JsonProperty(\"{}\")]",
                             "",
                             identifier,
                             indent = whitespace,
